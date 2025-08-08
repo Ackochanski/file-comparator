@@ -1,4 +1,4 @@
-unction normalizeXML(xmlString) {
+function normalizeXML(xmlString) {
   try {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlString, 'application/xml');
