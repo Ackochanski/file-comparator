@@ -4,16 +4,15 @@ function normalizeXML(xmlString) {
     const xmlDoc = parser.parseFromString(xmlString, 'application/xml');
 
     if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
-      return xmlString; // return original if parse failed
+      return xmlString;
     }
 
     const serializer = new XMLSerializer();
     const rawString = serializer.serializeToString(xmlDoc);
 
-    // Pretty print: insert new lines between tags
+    // Add newlines between tags
     const formatted = rawString.replace(/(>)(<)(\/?)/g, '$1\n$2$3');
 
-    // Optional: indent based on tag depth
     const lines = formatted.split('\n');
     let indent = 0;
     return lines.map(line => {
