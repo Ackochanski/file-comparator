@@ -1,6 +1,11 @@
 function compare() {
-  const text1 = document.getElementById('input1').value.split('\n');
-  const text2 = document.getElementById('input2').value.split('\n');
+  const raw1 = document.getElementById('input1').value;
+  const raw2 = document.getElementById('input2').value;
+
+  // Normalize if XML-like
+  const text1 = normalizeXML(raw1).split('\n');
+  const text2 = normalizeXML(raw2).split('\n');
+
   const resultDiv = document.getElementById('result');
   let output = '';
 
@@ -15,5 +20,6 @@ function compare() {
       if (line2) output += `<div class="added">+ ${line2}</div>`;
     }
   }
+
   resultDiv.innerHTML = output;
 }
