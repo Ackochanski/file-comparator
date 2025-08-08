@@ -1,10 +1,17 @@
+function looksLikeXML(text) {
+  const trimmed = text.trim();
+  return trimmed.startsWith('<') && trimmed.endsWith('>');
+}
+
 function compare() {
   const raw1 = document.getElementById('input1').value;
   const raw2 = document.getElementById('input2').value;
 
-  // Normalize if XML-like
-  const text1 = normalizeXML(raw1).split('\n');
-  const text2 = normalizeXML(raw2).split('\n');
+  const formatted1 = looksLikeXML(raw1) ? normalizeXML(raw1) : raw1;
+  const formatted2 = looksLikeXML(raw2) ? normalizeXML(raw2) : raw2;
+
+  const text1 = formatted1.split('\n');
+  const text2 = formatted2.split('\n');
 
   const resultDiv = document.getElementById('result');
   let output = '';
