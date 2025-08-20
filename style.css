@@ -1,48 +1,233 @@
-*** a/style.css
---- b/style.css
-@@
- /* existing styles ... */
- 
-+.toggle-row {
-+  display: flex;
-+  flex-wrap: wrap;
-+  gap: 12px 18px;
-+  margin: 10px 0;
-+}
-+.toggle {
-+  display: inline-flex;
-+  align-items: center;
-+  gap: 6px;
-+  font-size: 14px;
-+}
-+.summary {
-+  background: #f6f8fa;
-+  border: 1px solid #e5e7eb;
-+  border-radius: 8px;
-+  padding: 12px 14px;
-+  margin-top: 8px;
-+  font-size: 14px;
-+}
-+.summary strong { display: block; margin-bottom: 6px; }
-+.details { margin-top: 12px; }
-+.details code {
-+  white-space: pre-wrap;
-+  word-break: break-word;
-+}
-+.freq-table {
-+  width: 100%;
-+  border-collapse: collapse;
-+  margin-top: 10px;
-+  font-size: 13px;
-+}
-+.freq-table th, .freq-table td {
-+  border: 1px solid #e5e7eb;
-+  padding: 6px 8px;
-+  vertical-align: top;
-+}
-+.freq-table thead th {
-+  background: #f3f4f6;
-+  font-weight: 600;
-+}
-+.status-ok { color: #127f2e; font-weight: 600; }
-+.status-bad { color: #b91c1c; font-weight: 600; }
+/* ============================================================================
+   File Comparator - style.css
+   - Base layout + typography
+   - Two-panel input grid
+   - Controls row with toggles
+   - Results summary, details, and frequency table
+   - Diff block styling for order-sensitive view
+   ========================================================================== */
+
+/* ---- Base / Reset-ish ---- */
+:root {
+  --bg: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --panel-bg: #fafafa;
+  --accent: #2563eb;
+  --ok: #127f2e;
+  --bad: #b91c1c;
+  --summary-bg: #f6f8fa;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, sans-serif;
+  line-height: 1.45;
+}
+
+h1, h2, h3 {
+  margin: 0 0 8px;
+  line-height: 1.2;
+}
+
+p { margin: 0 0 12px; }
+
+code, pre, kbd, samp {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.95em;
+}
+
+/* ---- Layout ---- */
+header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+}
+
+header h1 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+main {
+  max-width: 1100px;
+  margin: 16px auto 40px;
+  padding: 0 16px;
+}
+
+/* ---- Inputs section ---- */
+.inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.panel h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.panel textarea {
+  width: 100%;
+  min-height: 260px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  resize: vertical;
+  outline: none;
+}
+
+.panel textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* ---- Controls ---- */
+.controls {
+  display: block;
+  margin: 14px 0 8px;
+}
+
+.toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin: 10px 0 14px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+button, .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+button:hover, .button:hover {
+  filter: brightness(0.96);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---- Results: Summary & Details ---- */
+.summary {
+  background: var(--summary-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.summary strong { display: block; margin-bottom: 6px; }
+
+.details { margin-top: 12px; }
+
+.details h3 {
+  font-size: 15px;
+  margin: 14px 0 8px;
+}
+
+.details ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.details li {
+  margin: 4px 0;
+}
+
+.details code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---- Frequency table (multiset count mismatches) ---- */
+.freq-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.freq-table th, .freq-table td {
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.freq-table thead th {
+  background: #f3f4f6;
+  font-weight: 600;
+  text-align: left;
+}
+
+.status-ok { color: var(--ok); font-weight: 600; }
+.status-bad { color: var(--bad); font-weight: 600; }
+
+/* ---- Order-sensitive diff block ---- */
+pre.diff {
+  background: #0b1021;
+  color: #e6e6e6;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #0e1533;
+  overflow: auto;
+  margin-top: 8px;
+}
+
+pre.diff code {
+  color: inherit;
+}
+
+/* ---- Small screens ---- */
+@media (max-width: 800px) {
+  .inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Helper / muted text ---- */
+.muted { color: var(--muted); }
