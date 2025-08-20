@@ -1,32 +1,61 @@
-function looksLikeXML(text) {
-  const trimmed = text.trim();
-  return trimmed.startsWith('<') && trimmed.endsWith('>');
-}
-
-function compare() {
-  const raw1 = document.getElementById('input1').value;
-  const raw2 = document.getElementById('input2').value;
-
-  const formatted1 = looksLikeXML(raw1) ? normalizeXML(raw1) : raw1;
-  const formatted2 = looksLikeXML(raw2) ? normalizeXML(raw2) : raw2;
-
-  const text1 = formatted1.split('\n');
-  const text2 = formatted2.split('\n');
-
-  const resultDiv = document.getElementById('result');
-  let output = '';
-
-  const maxLength = Math.max(text1.length, text2.length);
-  for (let i = 0; i < maxLength; i++) {
-    const line1 = text1[i] || '';
-    const line2 = text2[i] || '';
-    if (line1 === line2) {
-      output += `<div class="unchanged">${line1}</div>`;
-    } else {
-      if (line1) output += `<div class="removed">- ${line1}</div>`;
-      if (line2) output += `<div class="added">+ ${line2}</div>`;
-    }
-  }
-
-  resultDiv.innerHTML = output;
-}
+*** a/css/styles.css
+--- b/css/styles.css
+@@
+ .inputs {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   gap: 16px;
+ }
+ .panel textarea {
+   width: 100%;
+   min-height: 260px;
+   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+   font-size: 13px;
+   line-height: 1.4;
+ }
+ .controls {
+   margin: 12px 0 8px;
+ }
++.toggle-row {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 12px 18px;
++  margin-bottom: 10px;
++}
++.toggle {
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  font-size: 14px;
++}
++.summary {
++  background: #f6f8fa;
++  border: 1px solid #e5e7eb;
++  border-radius: 8px;
++  padding: 12px 14px;
++  margin-top: 8px;
++  font-size: 14px;
++}
++.summary strong { display: block; margin-bottom: 6px; }
++.details { margin-top: 12px; }
++.details code {
++  white-space: pre-wrap;
++  word-break: break-word;
++}
++.freq-table {
++  width: 100%;
++  border-collapse: collapse;
++  margin-top: 10px;
++  font-size: 13px;
++}
++.freq-table th, .freq-table td {
++  border: 1px solid #e5e7eb;
++  padding: 6px 8px;
++  vertical-align: top;
++}
++.freq-table thead th {
++  background: #f3f4f6;
++  font-weight: 600;
++}
++.status-ok { color: #127f2e; font-weight: 600; }
++.status-bad { color: #b91c1c; font-weight: 600; }
