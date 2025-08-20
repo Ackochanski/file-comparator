@@ -1,40 +1,60 @@
-*** a/index.html
---- b/index.html
-@@
--    <main>
-+    <main>
-       <section class="inputs">
-         <!-- existing input areas -->
-       </section>
--      <section class="controls">
--        <button id="compareBtn">Compare</button>
--      </section>
-+      <section class="controls">
-+        <div class="toggle-row">
-+          <label class="toggle">
-+            <input type="checkbox" id="ignoreOrderToggle" />
-+            <span>Ignore order (multiset compare)</span>
-+          </label>
-+          <label class="toggle" title="Trim trailing spaces only">
-+            <input type="checkbox" id="trimTrailing" checked />
-+            <span>Trim trailing spaces</span>
-+          </label>
-+          <label class="toggle">
-+            <input type="checkbox" id="collapseWS" />
-+            <span>Collapse inner whitespace</span>
-+          </label>
-+          <label class="toggle">
-+            <input type="checkbox" id="caseSensitive" checked />
-+            <span>Case sensitive</span>
-+          </label>
-+        </div>
-+        <!-- your existing Compare button should already be here -->
-+        <!-- <button id="compareBtn">Compare</button> -->
-+      </section>
-+      <section id="summary" class="summary" aria-live="polite"></section>
-+      <section id="details" class="details"></section>
-     </main>
--    <script src="script.js"></script>
-+    <script src="script.js"></script>
-   </body>
- </html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>File Comparator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>File Comparator</h1>
+  </header>
+
+  <main>
+    <!-- Inputs: two textareas for File A and File B -->
+    <section class="inputs">
+      <div class="panel">
+        <h2>File A</h2>
+        <textarea id="inputA" placeholder="Paste or drop file A here"></textarea>
+      </div>
+      <div class="panel">
+        <h2>File B</h2>
+        <textarea id="inputB" placeholder="Paste or drop file B here"></textarea>
+      </div>
+    </section>
+
+    <!-- Controls: multiset toggle + normalization + Compare button -->
+    <section class="controls">
+      <div class="toggle-row">
+        <label class="toggle">
+          <input type="checkbox" id="ignoreOrderToggle" />
+          <span>Ignore order (multiset compare)</span>
+        </label>
+        <label class="toggle" title="Trim trailing spaces only">
+          <input type="checkbox" id="trimTrailing" checked />
+          <span>Trim trailing spaces</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="collapseWS" />
+          <span>Collapse inner whitespace</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="caseSensitive" checked />
+          <span>Case sensitive</span>
+        </label>
+      </div>
+
+      <button id="compareBtn">Compare</button>
+    </section>
+
+    <!-- Results -->
+    <section id="summary" class="summary" aria-live="polite"></section>
+    <section id="details" class="details"></section>
+  </main>
+
+  <!-- If you use XML helpers, keep this; otherwise it’s harmless -->
+  <script src="xmlFormatter.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
