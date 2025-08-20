@@ -1,6 +1,7 @@
 /* ============================================================================
- * File Comparator - script.js (compat version)
+ * File Comparator - script.js (compat version + XML record multiset)
  * - Order-insensitive (multiset) compare with duplicate preservation
+ * - XML-aware multiset: compares whole <Incident> records (if XMLFmt is loaded)
  * - Order-sensitive unified diff (LCS-based) fallback
  * - No optional chaining (?.) and no String.replaceAll for older browsers
  * ========================================================================== */
@@ -150,6 +151,49 @@ function renderMultisetReport(result) {
     + '</table>';
 }
 
+/* ---------------------- XML record-level multiset ------------------------ */
+
+function looksLikeXml(text) {
+  return /^\s*<[^>]+>/.test(String(text == null ? '' : text));
+}
+
+// Uses window.XMLFmt.recordsToCanonicalStrings if available; falls back to line-based.
+function compareXmlRecordsAsMultisets(xmlA, xmlB, options) {
+  try {
+    if (window && window.XMLFmt && typeof window.XMLFmt.recordsToCanonicalStrings === 'function') {
+      var recA = window.XMLFmt.recordsToCanonicalStrings(xmlA, options || { recordSelector: 'Incident' });
+      var recB = window.XMLFmt.recordsToCanonicalStrings(xmlB, options || { recordSelector: 'Incident' });
+      var bagA = toBag(recA, { trim: true, collapseWhitespace: false, caseSensitive: true });
+      var bagB = toBag(recB, { trim: true, collapseWhitespace: false, caseSensitive: true });
+      var diff = diffBags(bagA, bagB);
+      return {
+        summary: {
+          totalA: recA.length,
+          totalB: recB.length,
+          uniqueA: bagA.size,
+          uniqueB: bagB.size,
+          onlyInA: diff.onlyInA.length,
+          onlyInB: diff.onlyInB.length,
+          freqDelta: diff.freqDelta.length,
+          identical: diff.onlyInA.length === 0 && diff.onlyInB.length === 0 && diff.freqDelta.length === 0
+        },
+        details: diff
+      };
+    } else {
+      // No XML formatter loaded; degrade gracefully
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('XMLFmt not found; using line-based multiset for XML.');
+      }
+      return compareTextAsMultisets(xmlA, xmlB, { trim: true });
+    }
+  } catch (e) {
+    if (typeof console !== 'undefined' && console.error) {
+      console.error('XML compare error; falling back to line-based:', e);
+    }
+    return compareTextAsMultisets(xmlA, xmlB, { trim: true });
+  }
+}
+
 /* ---------------------- Order-sensitive diff (LCS) ----------------------- */
 
 function lcs(a, b) {
@@ -246,9 +290,16 @@ function runComparison() {
   var pair = getInputTexts();
   var a = pair[0], b = pair[1];
   var ignoreOrder = safeChecked('ignoreOrderToggle', false);
+
   if (ignoreOrder) {
-    var result = compareTextAsMultisets(a, b, optsFromUI());
-    renderMultisetReport(result);
+    // If both inputs look like XML, and XMLFmt is present, compare records; else line-based.
+    if (looksLikeXml(a) && looksLikeXml(b)) {
+      var resultXml = compareXmlRecordsAsMultisets(a, b, { recordSelector: 'Incident' });
+      renderMultisetReport(resultXml);
+    } else {
+      var resultTxt = compareTextAsMultisets(a, b, optsFromUI());
+      renderMultisetReport(resultTxt);
+    }
   } else {
     renderOrderSensitive(a, b);
   }
@@ -258,7 +309,9 @@ document.addEventListener('DOMContentLoaded', function() {
   try {
     var btn = byId('compareBtn');
     if (!btn) {
-      console.error('Compare button (#compareBtn) not found.');
+      if (typeof console !== 'undefined' && console.error) {
+        console.error('Compare button (#compareBtn) not found.');
+      }
       return;
     }
     // Capture-phase: if Ignore Order is ON, prevent other listeners and handle here
@@ -278,7 +331,9 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   } catch (e) {
-    console.error('Error wiring compare button:', e);
+    if (typeof console !== 'undefined' && console.error) {
+      console.error('Error wiring compare button:', e);
+    }
   }
 
   // Optional: Ctrl/Cmd + Enter triggers compare
