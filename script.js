@@ -1,89 +1,98 @@
 /* ============================================================================
- * File Comparator - Full script.js
+ * File Comparator - script.js (compat version)
  * - Order-insensitive (multiset) compare with duplicate preservation
  * - Order-sensitive unified diff (LCS-based) fallback
- * - Expects DOM elements:
- *     #inputA, #inputB (textareas)
- *     #compareBtn (button)
- *     #ignoreOrderToggle, #trimTrailing, #collapseWS, #caseSensitive (checkboxes)
- *     #summary, #details (result containers)
+ * - No optional chaining (?.) and no String.replaceAll for older browsers
  * ========================================================================== */
 
 /* ------------------------------ Utilities -------------------------------- */
 
 function byId(id) { return document.getElementById(id); }
 
+function safeChecked(id, fallback) {
+  var el = byId(id);
+  return el && typeof el.checked === 'boolean' ? el.checked : !!fallback;
+}
+
 function getInputTexts() {
-  const aEl = byId('inputA') || byId('fileA');
-  const bEl = byId('inputB') || byId('fileB');
-  const a = aEl ? (aEl.value ?? '') : '';
-  const b = bEl ? (bEl.value ?? '') : '';
+  var aEl = byId('inputA') || byId('fileA');
+  var bEl = byId('inputB') || byId('fileB');
+  var a = aEl ? (aEl.value || '') : '';
+  var b = bEl ? (bEl.value || '') : '';
   return [a, b];
 }
 
 function optsFromUI() {
   return {
-    trim: byId('trimTrailing')?.checked ?? true,
-    collapseWhitespace: byId('collapseWS')?.checked ?? false,
-    caseSensitive: byId('caseSensitive')?.checked ?? true
+    trim: safeChecked('trimTrailing', true),
+    collapseWhitespace: safeChecked('collapseWS', false),
+    caseSensitive: safeChecked('caseSensitive', true)
   };
 }
 
 function escapeHtml(s) {
   return String(s)
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;');
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
 }
 
 /* ---------------------- Canonicalization & Bags -------------------------- */
 
-function canonicalizeRow(s, { trim = true, collapseWhitespace = false, caseSensitive = true } = {}) {
-  let out = String(s ?? '').replace(/\r\n?/g, '\n'); // normalize newlines
-  if (trim) out = out.replace(/[ \t]+$/g, '');      // trim trailing spaces only (keep leading)
+function canonicalizeRow(s, opts) {
+  opts = opts || {};
+  var trim = opts.trim !== false; // default true
+  var collapseWhitespace = !!opts.collapseWhitespace;
+  var caseSensitive = !!opts.caseSensitive;
+
+  var out = String(s == null ? '' : s).replace(/\r\n?/g, '\n'); // normalize newlines
+  if (trim) out = out.replace(/[ \t]+$/g, '');      // trim trailing spaces only
   if (collapseWhitespace) out = out.replace(/[ \t]+/g, ' ');
   if (!caseSensitive) out = out.toLowerCase();
   return out;
 }
 
 function toBag(strings, opts) {
-  const bag = new Map();
-  for (const s of strings) {
-    const k = canonicalizeRow(s, opts);
+  var bag = new Map();
+  for (var i=0; i<strings.length; i++) {
+    var k = canonicalizeRow(strings[i], opts);
     bag.set(k, (bag.get(k) || 0) + 1);
   }
   return bag;
 }
 
 function diffBags(bagA, bagB) {
-  const keys = new Set([...bagA.keys(), ...bagB.keys()]);
-  const onlyInA = [];
-  const onlyInB = [];
-  const freqDelta = [];
-  for (const k of keys) {
-    const a = bagA.get(k) || 0;
-    const b = bagB.get(k) || 0;
+  var keys = new Set([].concat(Array.from(bagA.keys()), Array.from(bagB.keys())));
+  var onlyInA = [];
+  var onlyInB = [];
+  var freqDelta = [];
+  keys.forEach(function(k){
+    var a = bagA.get(k) || 0;
+    var b = bagB.get(k) || 0;
     if (a && !b) onlyInA.push({ value: k, count: a });
     else if (!a && b) onlyInB.push({ value: k, count: b });
-    else if (a !== b) freqDelta.push({ value: k, a, b, delta: a - b });
-  }
-  // Stable sorting for display
-  onlyInA.sort((x,y)=>x.value.localeCompare(y.value));
-  onlyInB.sort((x,y)=>x.value.localeCompare(y.value));
-  freqDelta.sort((x,y)=>Math.sign(Math.abs(y.delta)-Math.abs(x.delta)) || x.value.localeCompare(y.value));
-  return { onlyInA, onlyInB, freqDelta };
+    else if (a !== b) freqDelta.push({ value: k, a: a, b: b, delta: a - b });
+  });
+  onlyInA.sort(function(x,y){ return x.value.localeCompare(y.value); });
+  onlyInB.sort(function(x,y){ return x.value.localeCompare(y.value); });
+  freqDelta.sort(function(x,y){
+    var d = Math.abs(y.delta) - Math.abs(x.delta);
+    return d !== 0 ? d : x.value.localeCompare(y.value);
+  });
+  return { onlyInA: onlyInA, onlyInB: onlyInB, freqDelta: freqDelta };
 }
 
 /* ---------------------- Multiset (order-insensitive) --------------------- */
 
 function compareTextAsMultisets(textA, textB, opts) {
-  const split = (t) => String(t ?? '').split(/\r?\n/);
-  const prune = (arr) => (arr.length && arr[arr.length-1] === '' ? arr.slice(0, -1) : arr);
-  const A = prune(split(textA));
-  const B = prune(split(textB));
-  const bagA = toBag(A, opts);
-  const bagB = toBag(B, opts);
-  const diff = diffBags(bagA, bagB);
+  function split(t){ return String(t == null ? '' : t).split(/\r?\n/); }
+  function prune(arr){ return (arr.length && arr[arr.length-1] === '') ? arr.slice(0, -1) : arr; }
+
+  var A = prune(split(textA));
+  var B = prune(split(textB));
+  var bagA = toBag(A, opts);
+  var bagB = toBag(B, opts);
+  var diff = diffBags(bagA, bagB);
   return {
     summary: {
       totalA: A.length, totalB: B.length,
@@ -96,205 +105,187 @@ function compareTextAsMultisets(textA, textB, opts) {
   };
 }
 
-function renderMultisetReport({ summary, details }) {
-  const summaryEl = byId('summary'); const detailsEl = byId('details');
+function renderMultisetReport(result) {
+  var summaryEl = byId('summary'); var detailsEl = byId('details');
   if (!summaryEl || !detailsEl) return;
-  const s = summary;
-  summaryEl.innerHTML = `
-    <strong>Summary</strong>
-    <div>Total A: ${s.totalA} · Total B: ${s.totalB}</div>
-    <div>Unique A: ${s.uniqueA} · Unique B: ${s.uniqueB}</div>
-    <div>Only-in-A: ${s.onlyInA} · Only-in-B: ${s.onlyInB} · Count mismatches: ${s.freqDelta}</div>
-    <div>Status: <span class="${s.identical ? 'status-ok' : 'status-bad'}">
-      ${s.identical ? '✅ Identical as multisets' : '❌ Differences found'}
-    </span></div>
-  `;
+  var s = result.summary;
+  summaryEl.innerHTML = ''
+    + '<strong>Summary</strong>'
+    + '<div>Total A: ' + s.totalA + ' · Total B: ' + s.totalB + '</div>'
+    + '<div>Unique A: ' + s.uniqueA + ' · Unique B: ' + s.uniqueB + '</div>'
+    + '<div>Only-in-A: ' + s.onlyInA + ' · Only-in-B: ' + s.onlyInB + ' · Count mismatches: ' + s.freqDelta + '</div>'
+    + '<div>Status: <span class="' + (s.identical ? 'status-ok' : 'status-bad') + '">'
+    + (s.identical ? '✅ Identical as multisets' : '❌ Differences found')
+    + '</span></div>';
 
-  const list = (arr, head) => `
-    <h3>${head} (${arr.length})</h3>
-    <ul>${arr.slice(0, 200).map(e => `<li><code>${escapeHtml(e.value)}</code> × ${e.count ?? (e.a + e.b)}</li>`).join('')}</ul>
-    ${arr.length > 200 ? '<em>Showing first 200…</em>' : ''}
-  `;
+  function list(arr, head) {
+    var html = '<h3>' + head + ' (' + arr.length + ')</h3><ul>';
+    for (var i=0; i<Math.min(arr.length, 200); i++) {
+      var e = arr[i];
+      html += '<li><code>' + escapeHtml(e.value) + '</code> × ' + (e.count != null ? e.count : (e.a + e.b)) + '</li>';
+    }
+    html += '</ul>';
+    if (arr.length > 200) html += '<em>Showing first 200…</em>';
+    return html;
+  }
 
-  detailsEl.innerHTML = `
-    ${list(details.onlyInA, 'Only in A')}
-    ${list(details.onlyInB, 'Only in B')}
-    <h3>Count mismatches (${details.freqDelta.length})</h3>
-    <table class="freq-table">
-      <thead><tr><th>Row</th><th>A</th><th>B</th><th>Δ</th></tr></thead>
-      <tbody>
-        ${details.freqDelta.slice(0, 500).map(e => `
-          <tr>
-            <td><code>${escapeHtml(e.value)}</code></td>
-            <td>${e.a}</td><td>${e.b}</td>
-            <td>${e.delta > 0 ? '+'+e.delta : e.delta}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
+  var freqRows = '';
+  var fr = result.details.freqDelta;
+  for (var i=0; i<Math.min(fr.length, 500); i++) {
+    var e = fr[i];
+    freqRows += '<tr>'
+      + '<td><code>' + escapeHtml(e.value) + '</code></td>'
+      + '<td>' + e.a + '</td><td>' + e.b + '</td>'
+      + '<td>' + (e.delta > 0 ? ('+' + e.delta) : e.delta) + '</td>'
+      + '</tr>';
+  }
+
+  detailsEl.innerHTML = ''
+    + list(result.details.onlyInA, 'Only in A')
+    + list(result.details.onlyInB, 'Only in B')
+    + '<h3>Count mismatches (' + fr.length + ')</h3>'
+    + '<table class="freq-table">'
+    + '  <thead><tr><th>Row</th><th>A</th><th>B</th><th>Δ</th></tr></thead>'
+    + '  <tbody>' + freqRows + '</tbody>'
+    + '</table>';
 }
 
 /* ---------------------- Order-sensitive diff (LCS) ----------------------- */
-/* Simple unified diff-ish output for when Ignore Order is OFF */
 
 function lcs(a, b) {
-  const n = a.length, m = b.length;
-  const dp = Array(n+1).fill(null).map(()=>Array(m+1).fill(0));
-  for (let i=1;i<=n;i++){
-    for (let j=1;j<=m;j++){
-      if (a[i-1] === b[j-1]) dp[i][j] = dp[i-1][j-1]+1;
-      else dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+  var n = a.length, m = b.length;
+  var dp = Array(n+1); for (var i=0;i<=n;i++){ dp[i] = Array(m+1).fill(0); }
+  for (var i2=1;i2<=n;i2++){
+    for (var j2=1;j2<=m;j2++){
+      if (a[i2-1] === b[j2-1]) dp[i2][j2] = dp[i2-1][j2-1]+1;
+      else dp[i2][j2] = Math.max(dp[i2-1][j2], dp[i2][j2-1]);
     }
   }
-  // backtrack
-  const seq = [];
-  let i=n, j=m;
-  while (i>0 && j>0) {
-    if (a[i-1] === b[j-1]) { seq.push(a[i-1]); i--; j--; }
-    else if (dp[i-1][j] >= dp[i][j-1]) i--;
-    else j--;
+  var seq = [];
+  var i3=n, j3=m;
+  while (i3>0 && j3>0) {
+    if (a[i3-1] === b[j3-1]) { seq.push(a[i3-1]); i3--; j3--; }
+    else if (dp[i3-1][j3] >= dp[i3][j3-1]) i3--;
+    else j3--;
   }
   return seq.reverse();
 }
 
-function unifiedDiff(aText, bText, { context = 3 } = {}) {
-  const A = String(aText ?? '').replace(/\r\n?/g, '\n').split('\n');
-  const B = String(bText ?? '').replace(/\r\n?/g, '\n').split('\n');
-  // Remove trailing empty line alignment
+function unifiedDiff(aText, bText, opts) {
+  opts = opts || {};
+  var A = String(aText == null ? '' : aText).replace(/\r\n?/g, '\n').split('\n');
+  var B = String(bText == null ? '' : bText).replace(/\r\n?/g, '\n').split('\n');
   if (A.length && A[A.length-1]==='') A.pop();
   if (B.length && B[B.length-1]==='') B.pop();
 
-  const common = lcs(A, B);
-  let i=0, j=0, k=0;
-  const hunks = [];
-  let cur = null;
+  var common = lcs(A, B);
+  var i=0, j=0, k=0;
+  var hunks = [];
+  var cur = null;
 
   function pushCur() {
     if (!cur) return;
-    // collapse leading/trailing context to 'context' lines
-    const lines = cur.lines;
-    // trim internal representation already contextualized; keep as-is
     hunks.push(cur);
     cur = null;
   }
-
-  function startHunk(ai, bi) {
-    cur = { aStart: ai+1, bStart: bi+1, lines: [] };
-  }
+  function startHunk(ai, bi) { cur = { aStart: ai+1, bStart: bi+1, lines: [] }; }
 
   while (i < A.length || j < B.length) {
     if (k < common.length && i < A.length && j < B.length && A[i] === common[k] && B[j] === common[k]) {
-      // context
-      if (cur) {
-        cur.lines.push(' ' + A[i]);
-        // If context exceeds, consider splitting hunks; we keep simple and let it accumulate.
-      }
+      if (cur) { cur.lines.push(' ' + A[i]); }
       i++; j++; k++;
     } else {
-      // difference area: start hunk if needed
       if (!cur) startHunk(i, j);
-      // consume removes and adds until we realign on next common line (or end)
-      if (j < B.length && (k >= common.length || B[j] !== common[k])) {
-        cur.lines.push('+' + B[j]); j++;
-        continue;
-      }
-      if (i < A.length && (k >= common.length || A[i] !== common[k])) {
-        cur.lines.push('-' + A[i]); i++;
-        continue;
-      }
-    }
-    // If we have a hunk and next line is common but we have enough trailing context, close it
-    if (cur && (k >= common.length || (i < A.length && j < B.length && A[i] === common[k] && B[j] === common[k]))) {
-      // keep some context lines around differences (already included as ' ' lines)
-      // We close hunks lazily at the end or when a big gap occurs; simplicity over perfect headers.
+      if (j < B.length && (k >= common.length || B[j] !== common[k])) { cur.lines.push('+' + B[j]); j++; continue; }
+      if (i < A.length && (k >= common.length || A[i] !== common[k])) { cur.lines.push('-' + A[i]); i++; continue; }
     }
   }
   if (cur) pushCur();
 
-  // Build unified diff text
-  const header = `--- A\n+++ B\n`;
-  const body = hunks.map(h => {
-    const aCount = h.lines.filter(l=>l[0] !== '+').length;
-    const bCount = h.lines.filter(l=>l[0] !== '-').length;
-    const hHeader = `@@ -${h.aStart},${aCount} +${h.bStart},${bCount} @@`;
-    return [hHeader, ...h.lines.map(escapeHtml)].join('\n');
+  var header = '--- A\n+++ B\n';
+  var body = hunks.map(function(h){
+    var aCount = h.lines.filter(function(l){ return l.charAt(0) !== '+'; }).length;
+    var bCount = h.lines.filter(function(l){ return l.charAt(0) !== '-'; }).length;
+    var hHeader = '@@ -' + h.aStart + ',' + aCount + ' +' + h.bStart + ',' + bCount + ' @@';
+    return [hHeader].concat(h.lines.map(escapeHtml)).join('\n');
   }).join('\n');
 
   return header + body;
 }
 
 function renderOrderSensitive(aText, bText) {
-  const summaryEl = byId('summary'); const detailsEl = byId('details');
+  var summaryEl = byId('summary'); var detailsEl = byId('details');
   if (!summaryEl || !detailsEl) return;
 
-  const A = String(aText ?? '').split(/\r?\n/);
-  const B = String(bText ?? '').split(/\r?\n/);
-  // naive quick identical check
-  const identical = aText.replace(/\r\n?/g,'\n') === bText.replace(/\r\n?/g,'\n');
+  var A = String(aText == null ? '' : aText).split(/\r?\n/);
+  var B = String(bText == null ? '' : bText).split(/\r?\n/);
+  var identical = String(aText == null ? '' : aText).replace(/\r\n?/g,'\n') === String(bText == null ? '' : bText).replace(/\r\n?/g,'\n');
 
-  summaryEl.innerHTML = `
-    <strong>Summary</strong>
-    <div>Total A: ${A[A.length-1]===''?A.length-1:A.length} · Total B: ${B[B.length-1]===''?B.length-1:B.length}</div>
-    <div>Status: <span class="${identical ? 'status-ok' : 'status-bad'}">
-      ${identical ? '✅ Identical (order-sensitive)' : '❌ Differences found'}
-    </span></div>
-  `;
+  summaryEl.innerHTML = ''
+    + '<strong>Summary</strong>'
+    + '<div>Total A: ' + (A[A.length-1]===''?A.length-1:A.length) + ' · Total B: ' + (B[B.length-1]===''?B.length-1:B.length) + '</div>'
+    + '<div>Status: <span class="' + (identical ? 'status-ok' : 'status-bad') + '">'
+    + (identical ? '✅ Identical (order-sensitive)' : '❌ Differences found')
+    + '</span></div>';
 
   if (identical) {
     detailsEl.innerHTML = '<em>No differences.</em>';
     return;
   }
 
-  const diff = unifiedDiff(aText, bText, { context: 3 });
-  detailsEl.innerHTML = `
-    <h3>Unified diff</h3>
-    <pre class="diff"><code>${diff}</code></pre>
-    <p style="margin-top:8px"><small>Tip: For a shell check, run <code>diff -u &lt;(printf %s "${'${A}'.replace(/"/g,'\\"')}") &lt;(printf %s "${'${B}'.replace(/"/g,'\\"')}")</code></small></p>
-  `;
+  var diff = unifiedDiff(aText, bText, { context: 3 });
+  detailsEl.innerHTML = ''
+    + '<h3>Unified diff</h3>'
+    + '<pre class="diff"><code>' + diff + '</code></pre>'
+    + '<p style="margin-top:8px"><small>Tip: For a shell check, sort both files first: <code>LC_ALL=C sort A &amp;&amp; LC_ALL=C sort B</code></small></p>';
 }
 
 /* --------------------------- Event wiring -------------------------------- */
 
 function runComparison() {
-  const [a, b] = getInputTexts();
-  const ignoreOrder = byId('ignoreOrderToggle')?.checked;
+  var pair = getInputTexts();
+  var a = pair[0], b = pair[1];
+  var ignoreOrder = safeChecked('ignoreOrderToggle', false);
   if (ignoreOrder) {
-    const result = compareTextAsMultisets(a, b, optsFromUI());
+    var result = compareTextAsMultisets(a, b, optsFromUI());
     renderMultisetReport(result);
   } else {
     renderOrderSensitive(a, b);
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = byId('compareBtn');
-  if (btn) {
-    // Capture-phase interceptor: if Ignore Order is ON, avoid other listeners
-    btn.addEventListener('click', (ev) => {
-      const toggle = byId('ignoreOrderToggle');
-      if (toggle && toggle.checked) {
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    var btn = byId('compareBtn');
+    if (!btn) {
+      console.error('Compare button (#compareBtn) not found.');
+      return;
+    }
+    // Capture-phase: if Ignore Order is ON, prevent other listeners and handle here
+    btn.addEventListener('click', function(ev){
+      if (safeChecked('ignoreOrderToggle', false)) {
         ev.stopImmediatePropagation();
         ev.preventDefault();
         runComparison();
       }
-    }, { capture: true });
+    }, true);
 
-    // Normal bubble listener (works when toggle is off, or as fallback)
-    btn.addEventListener('click', (ev) => {
-      // If toggle is on, capture listener already handled it.
-      if (!(byId('ignoreOrderToggle')?.checked)) {
+    // Bubble phase: if toggle is OFF, handle here
+    btn.addEventListener('click', function(ev){
+      if (!safeChecked('ignoreOrderToggle', false)) {
         ev.preventDefault();
         runComparison();
       }
     });
+  } catch (e) {
+    console.error('Error wiring compare button:', e);
   }
 
-  // Optional: Ctrl+Enter to compare
-  const aEl = byId('inputA'); const bEl = byId('inputB');
-  [aEl, bEl].forEach(el => {
+  // Optional: Ctrl/Cmd + Enter triggers compare
+  var aEl = byId('inputA'); var bEl = byId('inputB');
+  [aEl, bEl].forEach(function(el){
     if (!el) return;
-    el.addEventListener('keydown', (e) => {
+    el.addEventListener('keydown', function(e){
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         runComparison();
