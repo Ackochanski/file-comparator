@@ -1,23 +1,10 @@
 *** a/index.html
 --- b/index.html
 @@
-   <body>
--    <header>
--      <h1>File Comparator</h1>
--    </header>
-+    <header>
-+      <h1>File Comparator</h1>
-+    </header>
-     <main>
+-    <main>
++    <main>
        <section class="inputs">
-         <div class="panel">
-           <h2>File A</h2>
-           <textarea id="inputA" placeholder="Paste or drop file A here"></textarea>
-         </div>
-         <div class="panel">
-           <h2>File B</h2>
-           <textarea id="inputB" placeholder="Paste or drop file B here"></textarea>
-         </div>
+         <!-- existing input areas -->
        </section>
 -      <section class="controls">
 -        <button id="compareBtn">Compare</button>
@@ -41,11 +28,13 @@
 +            <span>Case sensitive</span>
 +          </label>
 +        </div>
-+        <button id="compareBtn">Compare</button>
++        <!-- your existing Compare button should already be here -->
++        <!-- <button id="compareBtn">Compare</button> -->
 +      </section>
 +      <section id="summary" class="summary" aria-live="polite"></section>
 +      <section id="details" class="details"></section>
      </main>
-     <script src="js/app.js"></script>
+-    <script src="script.js"></script>
++    <script src="script.js"></script>
    </body>
  </html>
